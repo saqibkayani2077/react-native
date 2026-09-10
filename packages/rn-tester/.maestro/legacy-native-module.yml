@@ -5,46 +5,120 @@ appId: ${APP_ID} # iOS: com.meta.RNTester.localDevelopment | Android: com.facebo
 # immediately, which races app cold start on CI.
 - extendedWaitUntil:
     visible:
-      text: 'APIs'
+      text: 'Components'
     timeout: 30000
+- openLink: rntester://example/LegacyModule/SampleLegacyModule
+- extendedWaitUntil:
+    visible:
+      id: 'run-all-tests'
+    timeout: 10000
 - tapOn:
-    id: 'apis-tab'
-- runFlow: ./helpers/search.yml
-- inputText:
-    text: 'Legacy Native'
-- assertVisible:
-    id: 'Legacy Native Module'
-- tapOn:
-    id: 'Legacy Native Module'
-- tapOn:
-    text: 'voidFunc'
+    id: 'run-all-tests'
 - assertVisible:
     id: 'voidFunc-result'
-- tapOn:
-    text: 'getBool'
 - assertVisible:
     id: 'getBool-result'
-- tapOn:
-    text: 'getEnum'
+    text: 'true'
 - assertVisible:
     id: 'getEnum-result'
-- tapOn:
-    text: 'getInt'
+    text: '1'
+- assertVisible:
+    id: 'getDouble-result'
+    text: '99.95'
 - assertVisible:
     id: 'getInt-result'
-- tapOn:
-    text: 'getString'
+    text: '99'
+- assertVisible:
+    id: 'getFloat-result'
+    text: '99.94999694824219'
+- scrollUntilVisible:
+    element:
+      id: 'getObjectFloat-result'
+    direction: DOWN
+    speed: 40
+- assertVisible:
+    id: 'getObjectDouble-result'
+    text: '99.95'
+- assertVisible:
+    id: 'getObjectInteger-result'
+    text: '99'
+- assertVisible:
+    id: 'getObjectFloat-result'
+    text: '99.94999694824219'
+- scrollUntilVisible:
+    element:
+      id: 'getValue-result'
+    direction: DOWN
+    speed: 40
 - assertVisible:
     id: 'getString-result'
-- tapOn:
-    text: 'getObject'
+    text: '.*Hello.*'
+- assertVisible:
+    id: 'getRootTag-result'
+    text: '11'
 - assertVisible:
     id: 'getObject-result'
-- tapOn:
-    text: 'getUnsafeObject'
+    text: '.*foo.*'
 - assertVisible:
     id: 'getUnsafeObject-result'
-- tapOn:
-    text: 'getValue'
+    text: '.*foo.*'
 - assertVisible:
     id: 'getValue-result'
+    text: '.*test.*'
+- scrollUntilVisible:
+    element:
+      id: 'getDynamicWithMap-result'
+    direction: DOWN
+    speed: 40
+- assertVisible:
+    id: 'getDynamicWithNull-result'
+    text: '.*Null.*'
+- assertVisible:
+    id: 'getDynamicWithBoolean-result'
+    text: '.*Boolean.*'
+- assertVisible:
+    id: 'getDynamicWithNumber-result'
+    text: '.*42.*'
+- assertVisible:
+    id: 'getDynamicWithString-result'
+    text: '.*The answer is 42.*'
+- assertVisible:
+    id: 'getDynamicWithArray-result'
+    text: '.*the.*'
+- assertVisible:
+    id: 'getDynamicWithMap-result'
+    text: '.*answer.*'
+- scrollUntilVisible:
+    element:
+      id: 'getConstants-result'
+    direction: DOWN
+    speed: 40
+- assertVisible:
+    id: 'callback-result'
+    text: 'Value From Callback'
+- assertVisible:
+    id: 'getArray-result'
+    text: '.*foo.*'
+- assertVisible:
+    id: 'promise-result'
+    text: 'result'
+- assertVisible:
+    id: 'rejectPromise-result'
+    text: 'intentional promise rejection'
+- assertVisible:
+    id: 'getConstants-result'
+    text: '.*something.*'
+- scrollUntilVisible:
+    element:
+      id: 'getConst3-result'
+    direction: DOWN
+    speed: 40
+- assertVisible:
+    id: 'getConst1-result'
+    text: 'true'
+- assertVisible:
+    id: 'getConst2-result'
+    text: '390'
+- assertVisible:
+    id: 'getConst3-result'
+    text: '.*something.*'
