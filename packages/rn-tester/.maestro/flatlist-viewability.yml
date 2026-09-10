@@ -1,0 +1,38 @@
+appId: ${APP_ID} # iOS: com.meta.RNTester.localDevelopment | Android: com.facebook.react.uiapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible: 'Components'
+    timeout: 30000
+- openLink: rntester://example/FlatListExample/onViewableItemsChanged-horizontal-noWaitForInteraction
+- extendedWaitUntil:
+    visible:
+      id: 'flat_list'
+    timeout: 10000
+- assertVisible:
+    id: 'output'
+    text: '.*Pizza, Burger.*'
+- openLink: rntester://example/FlatListExample/onViewableItemsChanged-horizontal-waitForInteraction
+- extendedWaitUntil:
+    visible:
+      id: 'flat_list'
+    timeout: 10000
+- scrollUntilVisible:
+    element: 'Brownie'
+    direction: RIGHT
+    speed: 40
+- assertVisible:
+    id: 'output'
+    text: '.*Cheesecake.*'
+- openLink: rntester://example/FlatListExample/onViewableItemsChanged-waitForInteraction
+- extendedWaitUntil:
+    visible:
+      id: 'flat_list'
+    timeout: 10000
+- scrollUntilVisible:
+    element: 'Brownie'
+    direction: DOWN
+    speed: 40
+- assertVisible:
+    id: 'output'
+    text: '.*Cheesecake, Brownie.*'

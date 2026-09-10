@@ -1,0 +1,52 @@
+appId: ${APP_ID} # iOS: com.meta.RNTester.localDevelopment | Android: com.facebook.react.uiapp
+---
+- launchApp
+- extendedWaitUntil:
+    visible: 'Components'
+    timeout: 30000
+- openLink: rntester://example/SectionList/onEndReached
+- extendedWaitUntil:
+    visible:
+      id: 'start_test'
+    timeout: 10000
+- tapOn:
+    id: 'start_test'
+- assertVisible:
+    id: 'output'
+    text: 'onEndReached'
+- openLink: rntester://example/SectionList/onViewableItemsChanged-horizontal-noWaitForInteraction
+- extendedWaitUntil:
+    visible:
+      id: 'section_list'
+    timeout: 10000
+- assertVisible:
+    id: 'output'
+    text: '.*Pizza.*'
+- openLink: rntester://example/SectionList/onViewableItemsChanged-horizontal-waitForInteraction
+- extendedWaitUntil:
+    visible:
+      id: 'section_list'
+    timeout: 10000
+- scrollUntilVisible:
+    element: 'Brownie'
+    direction: RIGHT
+    speed: 40
+- assertVisible:
+    id: 'output'
+    text: '.*Cheesecake.*'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - openLink: rntester://example/SectionList/onViewableItemsChanged-waitForInteraction
+      - extendedWaitUntil:
+          visible:
+            id: 'section_list'
+          timeout: 10000
+      - scrollUntilVisible:
+          element: 'Brownie'
+          direction: DOWN
+          speed: 40
+      - assertVisible:
+          id: 'output'
+          text: '.*Cheesecake.*'
