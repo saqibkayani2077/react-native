@@ -1,22 +1,30 @@
 name: iPhone Duo - iOS Native Check (Dimensions.getDisplayFeatures)
 
-# Standalone, manually-dispatched build that compiles the changed native file
-# (RCTDeviceInfo.mm) via the traditional CocoaPods RNTester integration —
-# self-contained, unlike the repo's normal iOS CI (test-ios-spm-rntester.yml /
-# e2e-ios-rntester.yml), which depend on prebuilt xcframework artifacts from
-# earlier jobs in test-all.yml and can't be dispatched on their own.
+# Standalone, manually-dispatched check for the display-features native path:
+# builds RNTester (compiles RCTDeviceInfo.mm + RCTDisplayFeatures.mm against
+# the iOS 27.1 SDK) and runs the RCTDisplayFeaturesTests mapping tests on a
+# simulator. Self-contained, unlike the repo's normal iOS CI
+# (test-ios-spm-rntester.yml / e2e-ios-rntester.yml), which depend on prebuilt
+# xcframework artifacts from earlier jobs in test-all.yml and can't be
+# dispatched on their own.
 
 on:
   workflow_dispatch: {}
 
 jobs:
   build:
-    runs-on: macos-15
-    timeout-minutes: 60
+    # xcode-27 is GitHub's preview image (actions/runner-images#14404). It
+    # carries the Xcode 27 line including 27.1, whose SDK declares
+    # UIView.reservedRegions(kind:) — verified by the probe run
+    # https://github.com/saqibkayani2077/expo/actions/runs/37646457691 —
+    # while macos-26 tops out at Xcode 26.6, which does not.
+    runs-on: xcode-27
+    timeout-minutes: 75
     env:
       APP_IOS_DIR: packages/rn-tester
       XCODE_PROJECT: RNTesterPods.xcworkspace
       XCODE_SCHEME: RNTester
+      XCODE_TEST_SCHEME: RNTesterUnitTests
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -39,7 +47,7 @@ jobs:
           xcodebuild -version
           echo "selected=$SELECTED" >> "$GITHUB_OUTPUT"
           if [ "$SELECTED" != "/Applications/Xcode_27.1.app" ]; then
-            echo "::warning::Xcode 27.1 is not on this GitHub-hosted runner image yet; fell back to $SELECTED. This run does NOT confirm compatibility with Xcode 27.1 specifically."
+            echo "::warning::Xcode 27.1 is not on this runner image; fell back to $SELECTED. The display-features native path compiles to a no-op stub below iOS SDK 27.1, so this run does not exercise the real query."
           fi
 
       - name: Setup node.js
@@ -67,7 +75,7 @@ jobs:
           rm -f Podfile.lock
           pod install --repo-update
 
-      - name: Build RNTester Debug for iOS Simulator (compiles RCTDeviceInfo.mm)
+      - name: Build RNTester Debug for iOS Simulator (compiles RCTDeviceInfo.mm + RCTDisplayFeatures.mm)
         working-directory: ${{ env.APP_IOS_DIR }}
         run: |
           # Use xcodebuild's own exit code, not log-text grepping — a "error:"
@@ -81,11 +89,32 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             build 2>&1 | tee /tmp/xcodebuild.log
-          echo "RNTester (Debug, iphonesimulator) built cleanly, including the modified RCTDeviceInfo.mm."
+          echo "RNTester (Debug, iphonesimulator) built cleanly, including RCTDeviceInfo.mm and RCTDisplayFeatures.mm."
 
-      - name: Upload build log
+      - name: Run RCTDisplayFeaturesTests (mapping unit tests)
+        working-directory: ${{ env.APP_IOS_DIR }}
+        run: |
+          set -o pipefail
+          xcrun simctl list devices available
+          DEST_ID=$(xcrun simctl list devices available | grep -E "iPhone" | grep -oE "[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}" | head -1)
+          if [ -z "$DEST_ID" ]; then
+            echo "::error::No available iPhone simulator on this runner image."
+            exit 1
+          fi
+          echo "Using simulator $DEST_ID"
+          xcodebuild \
+            -workspace "$XCODE_PROJECT" \
+            -scheme "$XCODE_TEST_SCHEME" \
+            -configuration Debug \
+            -destination "id=$DEST_ID" \
+            -only-testing:RNTesterUnitTests/RCTDisplayFeaturesTests \
+            test 2>&1 | tee /tmp/xcodebuild-test.log
+
+      - name: Upload build logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: iphone-duo-rn-xcodebuild-log
-          path: /tmp/xcodebuild.log
+          name: iphone-duo-rn-xcodebuild-logs
+          path: |
+            /tmp/xcodebuild.log
+            /tmp/xcodebuild-test.log

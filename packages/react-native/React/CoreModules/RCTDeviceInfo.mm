@@ -18,6 +18,7 @@
 #import <atomic>
 
 #import "CoreModulesPlugins.h"
+#import "RCTDisplayFeatures.h"
 
 using namespace facebook::react;
 
@@ -35,6 +36,9 @@ using namespace facebook::react;
 
   __weak UIWindow *_applicationWindow;
   NSDictionary * (^_dimensionsProvider)(void);
+
+  NSArray<NSDictionary *> *_currentDisplayFeatures;
+  RCTDisplayFeaturesMonitor *_displayFeaturesMonitor API_AVAILABLE(ios(27.1));
 }
 
 static NSString *const kFrameKeyPath = @"frame";
@@ -87,6 +91,18 @@ RCT_EXPORT_MODULE()
                                            selector:@selector(didReceiveNewContentSizeMultiplier)
                                                name:RCTAccessibilityManagerDidUpdateMultiplierNotification
                                              object:[_moduleRegistry moduleForName:"AccessibilityManager"]];
+
+  _currentDisplayFeatures = @[];
+  if (@available(iOS 27.1, *)) {
+    [self _attachDisplayFeaturesMonitorIfNeeded];
+    // The key window can be missing at creation, and a scene reconnect
+    // replaces it, so attaching is retried (idempotently) on every
+    // activation.
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(_appDidBecomeActiveForDisplayFeatures)
+                                                 name:UIApplicationDidBecomeActiveNotification
+                                               object:nil];
+  }
 
   _currentInterfaceDimensions = [self _exportedDimensions];
 
@@ -167,6 +183,51 @@ RCT_EXPORT_MODULE()
 #if TARGET_OS_IOS
   [[NSNotificationCenter defaultCenter] removeObserver:self name:UIDeviceOrientationDidChangeNotification object:nil];
 #endif
+
+  if (@available(iOS 27.1, *)) {
+    [_displayFeaturesMonitor invalidate];
+    _displayFeaturesMonitor = nil;
+  }
+}
+
+- (void)_appDidBecomeActiveForDisplayFeatures
+{
+  if (@available(iOS 27.1, *)) {
+    [self _attachDisplayFeaturesMonitorIfNeeded];
+    [_displayFeaturesMonitor refresh];
+  }
+}
+
+- (void)_attachDisplayFeaturesMonitorIfNeeded API_AVAILABLE(ios(27.1))
+{
+  UIWindow *keyWindow = RCTKeyWindow();
+  if (_displayFeaturesMonitor != nil && _displayFeaturesMonitor.window == keyWindow) {
+    return;
+  }
+  [_displayFeaturesMonitor invalidate];
+  _displayFeaturesMonitor = nil;
+  if (keyWindow == nil) {
+    // No window yet (app still launching); retried on the next activation.
+    return;
+  }
+  __weak __typeof(self) weakSelf = self;
+  _displayFeaturesMonitor =
+      [[RCTDisplayFeaturesMonitor alloc] initWithWindow:keyWindow
+                                               onUpdate:^(NSArray<NSDictionary *> *features) {
+                                                 [weakSelf _displayFeaturesDidChange:features];
+                                               }];
+}
+
+- (void)_displayFeaturesDidChange:(NSArray<NSDictionary *> *)features
+{
+  RCTAssertMainQueue();
+  // Layout passes report often; identical features must not re-emit
+  // didUpdateDimensions.
+  if ([features isEqualToArray:_currentDisplayFeatures]) {
+    return;
+  }
+  _currentDisplayFeatures = [features copy];
+  [self _interfaceFrameDidChange];
 }
 
 static BOOL RCTIsIPhoneNotched()
@@ -189,7 +250,7 @@ static BOOL RCTIsIPhoneNotched()
   return isIPhoneNotched;
 }
 
-static NSDictionary *RCTExportedDimensions(CGFloat fontScale)
+static NSDictionary *RCTExportedDimensions(CGFloat fontScale, NSArray<NSDictionary *> *displayFeatures)
 {
   RCTAssertMainQueue();
   UIWindow *mainWindow = RCTKeyWindow();
@@ -215,22 +276,11 @@ static NSDictionary *RCTExportedDimensions(CGFloat fontScale)
     @"scale" : @(screen.scale),
     @"fontScale" : @(fontScale)
   };
-  // Reserved regions (hinge, camera cutouts) that content should avoid, such
-  // as on iPhone Duo - see the "Designing for iPhone Duo" Human Interface
-  // Guidelines and Apple Tech Talk 111463, "Strike a pose with adaptive
-  // layouts on iPhone Duo". The underlying UIView.reservedRegions(kind:) API
-  // ships with the iOS 27.1 SDK, which is not part of any Xcode release
-  // publicly available as of 2026-09-10 (Apple lists Xcode 27.1 beta as
-  // "coming later this month"). RCTDeviceInfo.mm is plain Objective-C++ with
-  // no Swift compilation set up in this podspec target, so there is no safe
-  // way to reference that (Swift-only, not-yet-shipping) symbol from here
-  // yet without risking a build break for everyone. This always reports an
-  // empty array until that SDK is available and a proper native bridge (most
-  // likely a small Swift helper, once Swift sources are wired into this
-  // target's podspec, mirroring how other iPhone Duo-aware codebases in this
-  // ecosystem add a dedicated Swift provider file) can be added.
-  NSArray<NSDictionary *> *displayFeatures = @[];
-  return @{@"window" : dimsWindow, @"screen" : dimsScreen, @"displayFeatures" : displayFeatures};
+  // Reserved regions (a fold, an in-use camera) that content should avoid,
+  // reported by RCTDisplayFeaturesMonitor on devices that have them (iPhone
+  // Duo, iOS 27.1+) and empty everywhere else. The mapping rules live in
+  // RCTDisplayFeatures.h.
+  return @{@"window" : dimsWindow, @"screen" : dimsScreen, @"displayFeatures" : displayFeatures ?: @[]};
 }
 
 - (NSDictionary *)_exportedDimensions
@@ -253,7 +303,7 @@ static NSDictionary *RCTExportedDimensions(CGFloat fontScale)
   // that accessibilityManager will eventually become available, js will eventually
   // be updated with the correct fontScale.
   CGFloat fontScale = accessibilityManager ? accessibilityManager.multiplier : 1.0;
-  return RCTExportedDimensions(fontScale);
+  return RCTExportedDimensions(fontScale, _currentDisplayFeatures);
 }
 
 - (NSDictionary<NSString *, id> *)constantsToExport
