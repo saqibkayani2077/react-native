@@ -13,14 +13,14 @@ import {type DisplayFeature} from './NativeDeviceInfo';
 import {useEffect, useState} from 'react';
 
 /**
- * React hook that provides the display features (such as a hinge or a
- * front-facing camera cutout) that content should avoid covering.
- * Automatically updates when the device pose changes.
+ * React hook that provides the display features (such as a fold, a hinge or
+ * a front-facing camera cutout) that content should avoid covering.
+ * Automatically updates when the device posture changes.
  *
- * Returns an empty array on every platform today. iOS reserves this for the
- * iOS 27.1 SDK, which is not public as of 2026-09-10; see RCTDeviceInfo.mm.
+ * Populated on devices that report reserved display regions (iPhone Duo on
+ * iOS 27.1+); empty elsewhere. See the `DisplayFeature` type.
  */
-export default function useDisplayFeatures(): $ReadOnlyArray<DisplayFeature> {
+export default function useDisplayFeatures(): ReadonlyArray<DisplayFeature> {
   const [displayFeatures, setDisplayFeatures] = useState(() =>
     Dimensions.getDisplayFeatures(),
   );

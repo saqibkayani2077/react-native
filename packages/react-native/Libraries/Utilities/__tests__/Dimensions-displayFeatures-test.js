@@ -10,6 +10,7 @@
 
 'use strict';
 
+import {type DisplayFeature} from '../NativeDeviceInfo';
 import Dimensions from '../Dimensions';
 
 describe('Dimensions.getDisplayFeatures', () => {
@@ -19,7 +20,7 @@ describe('Dimensions.getDisplayFeatures', () => {
   });
 
   it('reports the display features passed to set()', () => {
-    const displayFeatures = [
+    const displayFeatures: Array<DisplayFeature> = [
       {
         type: 'hinge',
         state: 'postureHalfOpened',
@@ -33,16 +34,35 @@ describe('Dimensions.getDisplayFeatures', () => {
     expect(Dimensions.getDisplayFeatures()).toEqual(displayFeatures);
   });
 
+  it('reports a fold feature, as iPhone Duo produces for its inner display', () => {
+    // The values the native mapping emits for the iPhone Duo inner display
+    // (951x669pt, 40pt central division) while partially open — see
+    // RCTDisplayFeatures.h.
+    const displayFeatures: Array<DisplayFeature> = [
+      {
+        type: 'fold',
+        state: 'postureHalfOpened',
+        bounds: {x: 455.5, y: 0, width: 40, height: 669},
+      },
+    ];
+    Dimensions.set({
+      window: {width: 951, height: 669, scale: 3, fontScale: 1},
+      displayFeatures,
+    });
+    expect(Dimensions.getDisplayFeatures()).toEqual(displayFeatures);
+  });
+
   it('falls back to an empty array when a later update omits displayFeatures', () => {
+    const displayFeatures: Array<DisplayFeature> = [
+      {
+        type: 'cutout',
+        state: 'unknown',
+        bounds: {x: 0, y: 0, width: 40, height: 40},
+      },
+    ];
     Dimensions.set({
       window: {width: 820, height: 1180, scale: 3, fontScale: 1},
-      displayFeatures: [
-        {
-          type: 'cutout',
-          state: 'unknown',
-          bounds: {x: 0, y: 0, width: 40, height: 40},
-        },
-      ],
+      displayFeatures,
     });
     expect(Dimensions.getDisplayFeatures()).toHaveLength(1);
 

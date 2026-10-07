@@ -35,7 +35,7 @@ const eventEmitter = new EventEmitter<{
 }>();
 let dimensionsInitialized = false;
 let dimensions: DimensionsPayload;
-let displayFeatures: $ReadOnlyArray<DisplayFeature> = [];
+let displayFeatures: ReadonlyArray<DisplayFeature> = [];
 
 /**
  * Provides the application window's width and height. Prefer
@@ -109,13 +109,14 @@ class Dimensions {
   }
 
   /**
-   * Returns the display features (such as a hinge or a front-facing camera
-   * cutout) that content should avoid covering. Prefer `useDisplayFeatures`
-   * in React components.
+   * Returns the display features (such as a fold, a hinge or a front-facing
+   * camera cutout) that content should avoid covering. Prefer
+   * `useDisplayFeatures` in React components.
    *
-   * Empty on every platform today; see the `DisplayFeature` type.
+   * Populated on devices that report reserved display regions (iPhone Duo on
+   * iOS 27.1+); empty elsewhere. See the `DisplayFeature` type.
    */
-  static getDisplayFeatures(): $ReadOnlyArray<DisplayFeature> {
+  static getDisplayFeatures(): ReadonlyArray<DisplayFeature> {
     return displayFeatures;
   }
 

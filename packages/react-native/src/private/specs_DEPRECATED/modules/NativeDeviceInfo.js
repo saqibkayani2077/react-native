@@ -27,32 +27,37 @@ export type DisplayMetrics = {
   fontScale: number,
 };
 
-// A region of the display that content should avoid, such as a hinge or a
-// front-facing camera. Modeled after the reserved regions of iPhone Duo (see
-// the "Designing for iPhone Duo" Human Interface Guidelines and Apple Tech
-// Talk 111463, "Strike a pose with adaptive layouts on iPhone Duo") so that a
-// future foldable/dual-display Android device can report through the same
+// A region of the display that content should avoid, such as a fold, a hinge
+// or a front-facing camera. Modeled after the reserved regions of iPhone Duo
+// (see the "Designing for iPhone Duo" Human Interface Guidelines and Apple
+// Tech Talk 111463, "Strike a pose with adaptive layouts on iPhone Duo") so
+// that a foldable/dual-display Android device can report through the same
 // shape.
-export type DisplayFeatureType = 'hinge' | 'cutout';
+//
+// 'fold': a flexible region of one continuous display with no physical gap
+// (iPhone Duo's inner display). 'hinge': a physical gap between two separate
+// display panels. 'cutout': an occlusion such as an in-use camera.
+export type DisplayFeatureType = 'fold' | 'hinge' | 'cutout';
 
-// The posture of a 'hinge' DisplayFeature. Always 'unknown' for 'cutout'.
+// The posture of a 'fold' or 'hinge' DisplayFeature. Always 'unknown' for
+// 'cutout'.
 export type DisplayFeatureState =
   | 'unknown'
   | 'postureFlat'
   | 'postureHalfOpened';
 
 export type DisplayFeatureRect = {
-  x: number,
-  y: number,
-  width: number,
-  height: number,
+  readonly x: number,
+  readonly y: number,
+  readonly width: number,
+  readonly height: number,
 };
 
 export type DisplayFeature = {
-  type: DisplayFeatureType,
-  state: DisplayFeatureState,
+  readonly type: DisplayFeatureType,
+  readonly state: DisplayFeatureState,
   // In the same coordinate space as the 'window' DisplayMetrics, in points.
-  bounds: DisplayFeatureRect,
+  readonly bounds: DisplayFeatureRect,
 };
 
 export type DimensionsPayload = {
@@ -60,9 +65,9 @@ export type DimensionsPayload = {
   screen?: DisplayMetrics,
   windowPhysicalPixels?: DisplayMetricsAndroid,
   screenPhysicalPixels?: DisplayMetricsAndroid,
-  // Empty on every platform today. iOS reserves the field pending the iOS
-  // 27.1 SDK (not public as of 2026-09-10); see RCTDeviceInfo.mm.
-  displayFeatures?: $ReadOnlyArray<DisplayFeature>,
+  // Populated on iOS 27.1+ devices with reserved display regions (iPhone
+  // Duo); empty elsewhere. See RCTDisplayFeatures.h for the mapping rules.
+  displayFeatures?: ReadonlyArray<DisplayFeature>,
 };
 
 export type DeviceInfoConstants = {
